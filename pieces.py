@@ -159,10 +159,10 @@ class Queen(Piece):
     def __init__(self, color: int):
         if color is WHITE:
             row = 7
-            name = 'Wq0'
+            name = 'W-Q'
         else:
             row = 0
-            name = 'Bq0'
+            name = 'B-Q'
 
         Piece.__init__(self, row, 4, color, name)
 
@@ -180,10 +180,10 @@ class King(Piece):
     def __init__(self, color: int):
         if color is WHITE:
             row = 7
-            name = 'Wk0'
+            name = 'W-K'
         else:
             row = 0
-            name = 'Bk0'
+            name = 'B-K'
 
         Piece.__init__(self, row, 4, color, name)
 
