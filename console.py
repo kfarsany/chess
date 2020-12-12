@@ -26,13 +26,18 @@ def _print_turn(state) -> None:
         print('B')
 
 
-def _retrieve_move_input() -> (pieces.Piece, int, int):
-    piece = input("Piece Row and Column? ")
-    piece = piece.split()
-    piece[0], piece[1] = int(piece[0]), int(piece[1])
-    row = int(input("Row? "))
-    col = int(input("Column? "))
-    return game_state.board[piece[0]][piece[1]], row, col
+def _retrieve_move_input(state) -> (pieces.Piece, int, int):
+    user_input = input("Piece Name? ")
+    if state.turn == game_logic.WHITE:
+        user_input = 'W' + user_input
+    else:
+        user_input = 'B' + user_input
+    try:
+        row = int(input("Row? "))
+        col = int(input("Column? "))
+    except ValueError:
+        raise KeyError()
+    return state.pieces[user_input], row, col
 
 
 if __name__ == "__main__":
@@ -41,12 +46,13 @@ if __name__ == "__main__":
         _print_board(game_state)
         _print_turn(game_state)
         try:
-            move = _retrieve_move_input()
-        except IndexError or TypeError or ValueError:
+            user_move = _retrieve_move_input(game_state)
+        except KeyError:
             print("Input Error\n")
             continue
-        if move[0].color != game_state.turn:
-            print("Wrong Piece Chosen\n")
+        try:
+            game_state.execute_move(user_move)
+        except pieces.InvalidPositionError:
+            print("Invalid Move\n")
             continue
-        print(move)
         print()

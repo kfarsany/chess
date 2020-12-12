@@ -39,7 +39,8 @@ class Pawn(Piece):
     def move(self, new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
 
-        if new_col - self.col not in {-1, 0, 1}:
+        col_change = new_col - self.col
+        if col_change not in {-1, 0, 1}:
             raise InvalidPositionError()
 
         row_change = new_row - self.row
@@ -47,13 +48,13 @@ class Pawn(Piece):
             if row_change not in {-1, -2}:
                 raise InvalidPositionError()
             if row_change == -2:
-                if self.row != 6:
+                if self.row != 6 or col_change != 0:
                     raise InvalidPositionError()
                 self.en_passant = True
         else:
             if row_change not in {1, 2}:
                 raise InvalidPositionError()
-            if row_change == 2:
+            if row_change == 2 or col_change != 0:
                 if self.row != 1:
                     raise InvalidPositionError()
                 self.en_passant = True
@@ -159,12 +160,12 @@ class Queen(Piece):
     def __init__(self, color: int):
         if color is WHITE:
             row = 7
-            name = 'W-Q'
+            name = 'WQu'
         else:
             row = 0
-            name = 'B-Q'
+            name = 'BQu'
 
-        Piece.__init__(self, row, 4, color, name)
+        Piece.__init__(self, row, 3, color, name)
 
     def move(self, new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
@@ -175,15 +176,18 @@ class Queen(Piece):
         if (abs(row_change) != abs(col_change)) and (row_change != 0 and col_change != 0):
             raise InvalidPositionError()
 
+        self.row = new_row
+        self.col = new_col
+
 
 class King(Piece):
     def __init__(self, color: int):
         if color is WHITE:
             row = 7
-            name = 'W-K'
+            name = 'WKi'
         else:
             row = 0
-            name = 'B-K'
+            name = 'BKi'
 
         Piece.__init__(self, row, 4, color, name)
 
