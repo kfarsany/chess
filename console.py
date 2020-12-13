@@ -3,14 +3,13 @@
 # Console/Main
 
 import game_logic
-import pieces
 
 
-def _print_board(state) -> None:
+def _print_board(state: game_logic.GameState) -> None:
     text = ''
     for i in state.board:
         for x in i:
-            if isinstance(x, pieces.Piece):
+            if isinstance(x, game_logic.Piece):
                 text += x.name + "  "
             else:
                 text += "...  "
@@ -18,7 +17,7 @@ def _print_board(state) -> None:
     print(text)
 
 
-def _print_turn(state) -> None:
+def _print_turn(state: game_logic.GameState) -> None:
     print("Turn: ", end='')
     if state.turn is game_logic.WHITE:
         print("W")
@@ -26,7 +25,7 @@ def _print_turn(state) -> None:
         print('B')
 
 
-def _retrieve_move_input(state) -> (pieces.Piece, int, int):
+def _retrieve_move_input(state: game_logic.GameState) -> (game_logic.Piece, int, int):
     user_input = input("Piece Name? ")
     if state.turn == game_logic.WHITE:
         user_input = 'W' + user_input
@@ -52,7 +51,7 @@ if __name__ == "__main__":
             continue
         try:
             game_state.execute_move(user_move)
-        except pieces.InvalidPositionError:
+        except game_logic.InvalidPositionError:
             print("Invalid Move\n")
             continue
         print()
