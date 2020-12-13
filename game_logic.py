@@ -24,13 +24,13 @@ class GameState:
         if isinstance(new_square, Piece):
             if new_square.color == self.turn:
                 raise InvalidPositionError()
-            else:
-                del self.pieces[new_square.name]
 
-        old_row, old_col = piece.row, piece.col
-        piece.move(new_row, new_col)
+        old_row, old_col = int(piece.row), int(piece.col)
+        piece.move(self.board, new_row, new_col)
         self.board[old_row][old_col] = None
         self.board[new_row][new_col] = piece
+        if isinstance(new_square, Piece):
+            del self.pieces[new_square.name]
         self._change_turn()
 
     def _change_turn(self) -> None:
@@ -78,31 +78,66 @@ class Pawn(Piece):
         Piece.__init__(self, row, col, color, name)
         self.en_passant = False  # Can this piece taken by en passant?
 
-    def move(self, new_row: int, new_col: int) -> None:
+    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
 
-        col_change = new_col - self.col
+        row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
+        self._check_movement(board, row_change, col_change)
+
+        if abs(col_change) == 1:
+            self._check_capture(board, new_row, new_col, col_change)
+
+        if abs(row_change) == 1:
+            self.en_passant = False
+        self.row = new_row
+        self.col = new_col
+
+    def _check_movement(self, board: [[Piece]], row_change: int, col_change: int):
         if col_change not in {-1, 0, 1}:
             raise InvalidPositionError()
 
-        row_change = new_row - self.row
         if self.color is WHITE:
-            if row_change not in {-1, -2}:
-                raise InvalidPositionError()
-            if row_change == -2:
+            if row_change == -1:
+                if col_change == 0 and isinstance(board[self.row-1][self.col], Piece):
+                    raise InvalidPositionError()
+            elif row_change == -2:
                 if self.row != 6 or col_change != 0:
                     raise InvalidPositionError()
-                self.en_passant = True
-        else:
-            if row_change not in {1, 2}:
-                raise InvalidPositionError()
-            if row_change == 2 or col_change != 0:
-                if self.row != 1:
+                if isinstance(board[self.row-1][self.col], Piece) or isinstance(board[self.row-2][self.col], Piece):
                     raise InvalidPositionError()
                 self.en_passant = True
+            else:
+                raise InvalidPositionError()
+        else:
+            if row_change == 1:
+                if col_change == 0 and isinstance(board[self.row+1][self.col], Piece):
+                    raise InvalidPositionError()
+            elif row_change == 2:
+                if self.row != 1 or col_change != 0:
+                    raise InvalidPositionError()
+                if isinstance(board[self.row+1][self.col], Piece) or isinstance(board[self.row+2][self.col], Piece):
+                    raise InvalidPositionError()
+                self.en_passant = True
+            else:
+                raise InvalidPositionError()
 
-        self.row = new_row
-        self.col = new_col
+    def _check_capture(self, board: [[Piece]], new_row: int, new_col: int, col_change: int) -> None:
+        if board[new_row][new_col] is None and not self._is_en_passant(board, col_change):
+            raise InvalidPositionError()
+
+    def _is_en_passant(self, board: [[Piece]], col_change: int) -> bool:
+        if col_change == 1:
+            square_to_check = board[self.row][self.col+1]
+        else:
+            square_to_check = board[self.row][self.col-1]
+        if not isinstance(square_to_check, Pawn) or square_to_check.color == self.color:
+            return False
+        if square_to_check.en_passant:
+            if col_change == 1:
+                board[self.row][self.col + 1] = None
+            else:
+                board[self.row][self.col - 1] = None
+        return square_to_check.en_passant
 
 
 class Knight(Piece):
@@ -123,7 +158,7 @@ class Knight(Piece):
 
         Piece.__init__(self, row, col, color, name)
 
-    def move(self, new_row: int, new_col: int) -> None:
+    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
 
         row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
@@ -154,7 +189,7 @@ class Bishop(Piece):
 
         Piece.__init__(self, row, col, color, name)
 
-    def move(self, new_row: int, new_col: int) -> None:
+    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
 
         row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
@@ -184,8 +219,9 @@ class Rook(Piece):
                 name = 'Br1'
 
         Piece.__init__(self, row, col, color, name)
+        self.can_castle = True
 
-    def move(self, new_row: int, new_col: int) -> None:
+    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
 
         row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
@@ -196,6 +232,7 @@ class Rook(Piece):
 
         self.row = new_row
         self.col = new_col
+        self.can_castle = False
 
 
 class Queen(Piece):
@@ -209,7 +246,7 @@ class Queen(Piece):
 
         Piece.__init__(self, row, 3, color, name)
 
-    def move(self, new_row: int, new_col: int) -> None:
+    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
 
         row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
@@ -232,8 +269,9 @@ class King(Piece):
             name = 'BKi'
 
         Piece.__init__(self, row, 4, color, name)
+        self.can_castle = True
 
-    def move(self, new_row: int, new_col: int) -> None:
+    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
         _check_bounds(new_row, new_col)
 
         row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
@@ -244,12 +282,13 @@ class King(Piece):
 
         self.row = new_row
         self.col = new_col
+        self.can_castle = False
 
 
 def _calc_row_col_changes(piece: Piece, new_row: int, new_col: int) -> (int, int):
     return new_row - piece.row, new_col - piece.col
 
 
-def _check_bounds(row: int, col: int):
+def _check_bounds(row: int, col: int) -> None:
     if row not in range(8) or col not in range(8):
         raise InvalidPositionError()
