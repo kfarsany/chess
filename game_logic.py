@@ -21,11 +21,6 @@ class GameState:
 
     def execute_move(self, desired_move: ('Piece', int, int)) -> None:
         piece, new_row, new_col = desired_move
-        new_square = self.board[new_row][new_col]
-        # if isinstance(new_square, Piece):
-        #     if new_square.color == self.turn:
-        #         raise InvalidPositionError()
-
         old_row, old_col = int(piece.row), int(piece.col)
         piece.move(new_row, new_col)
         captured_square = self.all_possible_moves[piece][(new_row, new_col)]
@@ -138,6 +133,50 @@ class Piece:
             else:
                 self.add_move_to_possibles(board, row, col)
             row += 1
+            col -= 1
+
+    def explore_up(self, board: [['Piece']]) -> None:
+        row = self.row - 1
+        while row >= 0:
+            if _is_space_occupied(board, row, self.col):
+                if board[row][self.col].color is not self.color:
+                    self.add_move_to_possibles(board, row, self.col)
+                break
+            else:
+                self.add_move_to_possibles(board, row, self.col)
+            row -= 1
+
+    def explore_down(self, board: [['Piece']]) -> None:
+        row = self.row + 1
+        while row <= 7:
+            if _is_space_occupied(board, row, self.col):
+                if board[row][self.col].color is not self.color:
+                    self.add_move_to_possibles(board, row, self.col)
+                break
+            else:
+                self.add_move_to_possibles(board, row, self.col)
+            row += 1
+
+    def explore_right(self, board: [['Piece']]) -> None:
+        col = self.col + 1
+        while col <= 7:
+            if _is_space_occupied(board, self.row, col):
+                if board[self.row][col].color is not self.color:
+                    self.add_move_to_possibles(board, self.row, col)
+                break
+            else:
+                self.add_move_to_possibles(board, self.row, col)
+            col += 1
+
+    def explore_left(self, board: [['Piece']]) -> None:
+        col = self.col - 1
+        while col >= 0:
+            if _is_space_occupied(board, self.row, col):
+                if board[self.row][col].color is not self.color:
+                    self.add_move_to_possibles(board, self.row, col)
+                break
+            else:
+                self.add_move_to_possibles(board, self.row, col)
             col -= 1
 
 
@@ -335,7 +374,14 @@ class Rook(Piece):
     def calculate_possible_moves(self, board: [['Piece']]) -> None:
         Piece.calculate_possible_moves(self, board)
 
-
+        if self.row > 0:
+            Piece.explore_up(self, board)
+        if self.row < 7:
+            Piece.explore_down(self, board)
+        if self.col < 7:
+            Piece.explore_right(self, board)
+        if self.col > 0:
+            Piece.explore_left(self, board)
 
 
 class Queen(Piece):
@@ -367,6 +413,15 @@ class Queen(Piece):
         if self.row < 7 and self.col > 0:
             Piece.explore_lower_left_diagonal(self, board)
 
+        if self.row > 0:
+            Piece.explore_up(self, board)
+        if self.row < 7:
+            Piece.explore_down(self, board)
+        if self.col < 7:
+            Piece.explore_right(self, board)
+        if self.col > 0:
+            Piece.explore_left(self, board)
+
 
 class King(Piece):
     def __init__(self, color: int):
@@ -386,6 +441,26 @@ class King(Piece):
         self.row = new_row
         self.col = new_col
         self.can_castle = False
+
+    def calculate_possible_moves(self, board: [['Piece']]) -> None:
+        Piece.calculate_possible_moves(self, board)
+        possibles = {(self.row + 1, self.col - 1), (self.row - 1, self.col - 1),
+                     (self.row + 1, self.col + 1), (self.row - 1, self.col + 1),
+                     (self.row, self.col - 1), (self.row, self.col + 1),
+                     (self.row - 1, self.col), (self.row + 1, self.col)}
+        usables = set()
+        for row, col in possibles:
+            try:
+                _check_bounds(row, col)
+                if _is_space_occupied(board, row, col) and board[row][col].color == self.color:
+                    raise InvalidPositionError()
+            except InvalidPositionError:
+                pass
+            else:
+                usables.add((row, col))
+
+        for row, col in usables:
+            self.add_move_to_possibles(board, row, col)
 
 
 def _check_bounds(row: int, col: int) -> None:
