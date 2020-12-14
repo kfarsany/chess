@@ -1,6 +1,6 @@
 # Kian Farsany
 # Chess
-# Game Logic
+# Game Logic and Piece Classes
 
 WHITE = 1
 BLACK = 0
@@ -19,15 +19,15 @@ class GameState:
         self.all_possible_moves = dict(dict())     # {Piece: {(row, col): Piece to capture}}
         self._initialize_game()
 
-    def execute_move(self, desired_move: ('Piece', int, int)):
+    def execute_move(self, desired_move: ('Piece', int, int)) -> None:
         piece, new_row, new_col = desired_move
         new_square = self.board[new_row][new_col]
-        if isinstance(new_square, Piece):
-            if new_square.color == self.turn:
-                raise InvalidPositionError()
+        # if isinstance(new_square, Piece):
+        #     if new_square.color == self.turn:
+        #         raise InvalidPositionError()
 
         old_row, old_col = int(piece.row), int(piece.col)
-        piece.move(self.board, new_row, new_col)
+        piece.move(new_row, new_col)
         captured_square = self.all_possible_moves[piece][(new_row, new_col)]
         if isinstance(captured_square, Piece):
             self.board[captured_square.row][captured_square.col] = None
@@ -81,11 +81,64 @@ class Piece:
     def __repr__(self):
         return self.name
 
-    def add_move_to_possibles(self, board: [['Piece']], row: int, col: int):
+    def move(self, new_row: int, new_col: int) -> None:
+        _check_bounds(new_row, new_col)
+        if (new_row, new_col) not in self.possible_moves.keys():
+            raise InvalidPositionError()
+
+    def add_move_to_possibles(self, board: [['Piece']], row: int, col: int) -> None:
         self.possible_moves[(row, col)] = board[row][col]
 
     def calculate_possible_moves(self, board: [['Piece']]) -> None:
-        pass
+        self.possible_moves.clear()
+
+    def explore_upper_right_diagonal(self, board: [['Piece']]) -> None:
+        row, col = self.row - 1, self.col + 1
+        while row >= 0 and col <= 7:
+            if _is_space_occupied(board, row, col):
+                if board[row][col].color is not self.color:
+                    self.add_move_to_possibles(board, row, col)
+                break
+            else:
+                self.add_move_to_possibles(board, row, col)
+            row -= 1
+            col += 1
+
+    def explore_upper_left_diagonal(self, board: [['Piece']]) -> None:
+        row, col = self.row - 1, self.col - 1
+        while row >= 0 and col >= 0:
+            if _is_space_occupied(board, row, col):
+                if board[row][col].color is not self.color:
+                    self.add_move_to_possibles(board, row, col)
+                break
+            else:
+                self.add_move_to_possibles(board, row, col)
+            row -= 1
+            col -= 1
+
+    def explore_lower_right_diagonal(self, board: [['Piece']]) -> None:
+        row, col = self.row + 1, self.col + 1
+        while row <= 7 and col <= 7:
+            if _is_space_occupied(board, row, col):
+                if board[row][col].color is not self.color:
+                    self.add_move_to_possibles(board, row, col)
+                break
+            else:
+                self.add_move_to_possibles(board, row, col)
+            row += 1
+            col += 1
+
+    def explore_lower_left_diagonal(self, board: [['Piece']]) -> None:
+        row, col = self.row + 1, self.col - 1
+        while row <= 7 and col >= 0:
+            if _is_space_occupied(board, row, col):
+                if board[row][col].color is not self.color:
+                    self.add_move_to_possibles(board, row, col)
+                break
+            else:
+                self.add_move_to_possibles(board, row, col)
+            row += 1
+            col -= 1
 
 
 class Pawn(Piece):
@@ -100,8 +153,19 @@ class Pawn(Piece):
         Piece.__init__(self, row, col, color, name)
         self.en_passant = False  # Can this piece taken by en passant?
 
+    def move(self, new_row: int, new_col: int) -> None:
+        Piece.move(self, new_row, new_col)
+
+        if abs(new_row - self.row) == 2:
+            self.en_passant = True
+        else:
+            self.en_passant = False
+
+        self.row = new_row
+        self.col = new_col
+
     def calculate_possible_moves(self, board: [[Piece]]) -> None:
-        self.possible_moves.clear()
+        Piece.calculate_possible_moves(self, board)
         if self.color is WHITE:
             self._calculate_white_moves(board)
         else:
@@ -159,78 +223,6 @@ class Pawn(Piece):
                         board[self.row][self.col - 1].color is WHITE and board[self.row][self.col - 1].en_passant:
                     self.possible_moves[(self.row + 1, self.col - 1)] = board[self.row][self.col - 1]  # En Passant
 
-    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
-        _check_bounds(new_row, new_col)
-
-        if (new_row, new_col) not in self.possible_moves.keys():
-            raise InvalidPositionError()
-
-        if abs(new_row - self.row) == 2:
-            self.en_passant = True
-        else:
-            self.en_passant = False
-
-        self.row = new_row
-        self.col = new_col
-
-        # row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
-        # self._check_movement(board, row_change, col_change)
-        #
-        # if abs(col_change) == 1:
-        #     self._check_capture(board, new_row, new_col, col_change)
-        #
-        # if abs(row_change) == 1:
-        #     self.en_passant = False
-        # self.row = new_row
-        # self.col = new_col
-
-    def _check_movement(self, board: [[Piece]], row_change: int, col_change: int):
-        if col_change not in {-1, 0, 1}:
-            raise InvalidPositionError()
-
-        if self.color is WHITE:
-            if row_change == -1:
-                if col_change == 0 and isinstance(board[self.row-1][self.col], Piece):
-                    raise InvalidPositionError()
-            elif row_change == -2:
-                if self.row != 6 or col_change != 0:
-                    raise InvalidPositionError()
-                if isinstance(board[self.row-1][self.col], Piece) or isinstance(board[self.row-2][self.col], Piece):
-                    raise InvalidPositionError()
-                self.en_passant = True
-            else:
-                raise InvalidPositionError()
-        else:
-            if row_change == 1:
-                if col_change == 0 and isinstance(board[self.row+1][self.col], Piece):
-                    raise InvalidPositionError()
-            elif row_change == 2:
-                if self.row != 1 or col_change != 0:
-                    raise InvalidPositionError()
-                if isinstance(board[self.row+1][self.col], Piece) or isinstance(board[self.row+2][self.col], Piece):
-                    raise InvalidPositionError()
-                self.en_passant = True
-            else:
-                raise InvalidPositionError()
-
-    def _check_capture(self, board: [[Piece]], new_row: int, new_col: int, col_change: int) -> None:
-        if board[new_row][new_col] is None and not self._is_en_passant(board, col_change):
-            raise InvalidPositionError()
-
-    def _is_en_passant(self, board: [[Piece]], col_change: int) -> bool:
-        if col_change == 1:
-            square_to_check = board[self.row][self.col+1]
-        else:
-            square_to_check = board[self.row][self.col-1]
-        if not isinstance(square_to_check, Pawn) or square_to_check.color == self.color:
-            return False
-        if square_to_check.en_passant:
-            if col_change == 1:
-                board[self.row][self.col + 1] = None
-            else:
-                board[self.row][self.col - 1] = None
-        return square_to_check.en_passant
-
 
 class Knight(Piece):
     def __init__(self, col: int, color: int):
@@ -250,17 +242,31 @@ class Knight(Piece):
 
         Piece.__init__(self, row, col, color, name)
 
-    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
-        _check_bounds(new_row, new_col)
-
-        row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
-        if abs(row_change) not in {1, 2} or abs(col_change) not in {1, 2}:
-            raise InvalidPositionError()
-        if abs(row_change) == abs(col_change):
-            raise InvalidPositionError()
+    def move(self, new_row: int, new_col: int) -> None:
+        Piece.move(self, new_row, new_col)
 
         self.row = new_row
         self.col = new_col
+
+    def calculate_possible_moves(self, board: [['Piece']]) -> None:
+        Piece.calculate_possible_moves(self, board)
+        possibles = {(self.row + 1, self.col - 2), (self.row - 1, self.col - 2),
+                     (self.row + 1, self.col + 2), (self.row - 1, self.col + 2),
+                     (self.row + 2, self.col - 1), (self.row + 2, self.col + 1),
+                     (self.row - 2, self.col - 1), (self.row - 2, self.col + 1)}
+        usables = set()
+        for row, col in possibles:
+            try:
+                _check_bounds(row, col)
+                if _is_space_occupied(board, row, col) and board[row][col].color == self.color:
+                    raise InvalidPositionError()
+            except InvalidPositionError:
+                pass
+            else:
+                usables.add((row, col))
+
+        for row, col in usables:
+            self.add_move_to_possibles(board, row, col)
 
 
 class Bishop(Piece):
@@ -281,17 +287,23 @@ class Bishop(Piece):
 
         Piece.__init__(self, row, col, color, name)
 
-    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
-        _check_bounds(new_row, new_col)
-
-        row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
-        if row_change == 0 or col_change == 0:
-            raise InvalidPositionError()
-        if abs(row_change) != abs(col_change):
-            raise InvalidPositionError()
+    def move(self, new_row: int, new_col: int) -> None:
+        Piece.move(self, new_row, new_col)
 
         self.row = new_row
         self.col = new_col
+
+    def calculate_possible_moves(self, board: [['Piece']]) -> None:
+        Piece.calculate_possible_moves(self, board)
+
+        if self.row > 0 and self.col < 7:
+            Piece.explore_upper_right_diagonal(self, board)
+        if self.row > 0 and self.col > 0:
+            Piece.explore_upper_left_diagonal(self, board)
+        if self.row < 7 and self.col < 7:
+            Piece.explore_lower_right_diagonal(self, board)
+        if self.row < 7 and self.col > 0:
+            Piece.explore_lower_left_diagonal(self, board)
 
 
 class Rook(Piece):
@@ -313,18 +325,17 @@ class Rook(Piece):
         Piece.__init__(self, row, col, color, name)
         self.can_castle = True
 
-    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
-        _check_bounds(new_row, new_col)
-
-        row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
-        if row_change == 0 and col_change == 0:
-            raise InvalidPositionError()
-        if row_change != 0 and col_change != 0:
-            raise InvalidPositionError()
+    def move(self, new_row: int, new_col: int) -> None:
+        Piece.move(self, new_row, new_col)
 
         self.row = new_row
         self.col = new_col
         self.can_castle = False
+
+    def calculate_possible_moves(self, board: [['Piece']]) -> None:
+        Piece.calculate_possible_moves(self, board)
+
+
 
 
 class Queen(Piece):
@@ -338,17 +349,23 @@ class Queen(Piece):
 
         Piece.__init__(self, row, 3, color, name)
 
-    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
-        _check_bounds(new_row, new_col)
-
-        row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
-        if row_change == 0 and col_change == 0:
-            raise InvalidPositionError()
-        if (abs(row_change) != abs(col_change)) and (row_change != 0 and col_change != 0):
-            raise InvalidPositionError()
+    def move(self, new_row: int, new_col: int) -> None:
+        Piece.move(self, new_row, new_col)
 
         self.row = new_row
         self.col = new_col
+
+    def calculate_possible_moves(self, board: [['Piece']]) -> None:
+        Piece.calculate_possible_moves(self, board)
+
+        if self.row > 0 and self.col < 7:
+            Piece.explore_upper_right_diagonal(self, board)
+        if self.row > 0 and self.col > 0:
+            Piece.explore_upper_left_diagonal(self, board)
+        if self.row < 7 and self.col < 7:
+            Piece.explore_lower_right_diagonal(self, board)
+        if self.row < 7 and self.col > 0:
+            Piece.explore_lower_left_diagonal(self, board)
 
 
 class King(Piece):
@@ -363,22 +380,12 @@ class King(Piece):
         Piece.__init__(self, row, 4, color, name)
         self.can_castle = True
 
-    def move(self, board: [[Piece]], new_row: int, new_col: int) -> None:
-        _check_bounds(new_row, new_col)
-
-        row_change, col_change = _calc_row_col_changes(self, new_row, new_col)
-        if row_change == 0 and col_change == 0:
-            raise InvalidPositionError()
-        if abs(row_change) > 1 or abs(col_change) > 1:
-            raise InvalidPositionError()
+    def move(self, new_row: int, new_col: int) -> None:
+        Piece.move(self, new_row, new_col)
 
         self.row = new_row
         self.col = new_col
         self.can_castle = False
-
-
-def _calc_row_col_changes(piece: Piece, new_row: int, new_col: int) -> (int, int):
-    return new_row - piece.row, new_col - piece.col
 
 
 def _check_bounds(row: int, col: int) -> None:

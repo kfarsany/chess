@@ -1,19 +1,24 @@
 # Kian Farsany
 # Chess
 # Console/Main
+import time     # ##############################
 
 import game_logic
 
 
 def _print_board(state: game_logic.GameState) -> None:
     text = ''
+    count = 0
     for i in state.board:
+        text += str(count) + '\t'
         for x in i:
             if isinstance(x, game_logic.Piece):
                 text += x.name + "  "
             else:
                 text += "...  "
         text = text.rstrip() + "\n"
+        count += 1
+    text += " \t 0    1    2    3    4    5    6    7"
     print(text)
 
 
@@ -53,6 +58,7 @@ if __name__ == "__main__":
         #####################################################
         try:
             user_move = _retrieve_move_input(game_state)
+            start = time.time()  # ########################
         except KeyError:
             print("Input Error\n")
             continue
@@ -62,3 +68,5 @@ if __name__ == "__main__":
             print("Invalid Move\n")
             continue
         print()
+        stop = time.time()  # #############################
+        print(str(start) + '   ' + str(stop) + 's')  # ###############################
