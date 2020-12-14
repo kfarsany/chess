@@ -36,7 +36,10 @@ def _retrieve_move_input(state: game_logic.GameState) -> (game_logic.Piece, int,
         col = int(input("Column? "))
     except ValueError:
         raise KeyError()
-    return state.pieces[user_input], row, col
+    for piece in state.pieces:
+        if user_input == piece.name:
+            return piece, row, col
+    raise KeyError()
 
 
 if __name__ == "__main__":
@@ -44,6 +47,10 @@ if __name__ == "__main__":
     while True:
         _print_board(game_state)
         _print_turn(game_state)
+        #####################################################
+        for kv in game_state.all_possible_moves.items():
+            print(kv)
+        #####################################################
         try:
             user_move = _retrieve_move_input(game_state)
         except KeyError:
