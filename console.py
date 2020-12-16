@@ -9,6 +9,8 @@ def _run() -> None:
     game_state = game_logic.GameState()
     while True:
         _print_board(game_state)
+        if game_state.check:
+            print("CZECH!!!!!!!!!!")
         _print_turn(game_state)
         #####################################################
         for kv in game_state.all_possible_moves.items():
