@@ -6,31 +6,94 @@ WHITE = 1
 BLACK = 0
 
 
-class InvalidPositionError(Exception):
-    pass
-
-
 class GameState:
 
     def __init__(self):
         self.turn = WHITE
         self.board = [[]]   # 2-D array of Pieces or None
         self.pieces = set()     # set of Pieces
+        #############################################
+        self.black_rook_count = 2
+        self.black_knight_count = 2
+        self.black_bishop_count = 2
+        self.black_queen_count = 1
+        self.white_rook_count = 2
+        self.white_knight_count = 2
+        self.white_bishop_count = 2
+        self.white_queen_count = 1
+        #############################################
         self.all_possible_moves = dict(dict())     # {Piece: {(row, col): Piece to capture}}
         self._initialize_game()
 
     def execute_move(self, desired_move: ('Piece', int, int)) -> None:
         piece, new_row, new_col = desired_move
-        old_row, old_col = int(piece.row), int(piece.col)
-        piece.move(new_row, new_col)
         captured_square = self.all_possible_moves[piece][(new_row, new_col)]
         if isinstance(captured_square, Piece):
             self.board[captured_square.row][captured_square.col] = None
             self.pieces.remove(captured_square)
-        self.board[old_row][old_col] = None
+        self.board[piece.row][piece.col] = None
         self.board[new_row][new_col] = piece
+        piece.move(new_row, new_col)
+
+        if isinstance(piece, King) and (new_col == 1 or new_col == 6):
+            self._complete_castle(piece.row, new_col)
+        if isinstance(piece, Pawn) and (new_row == 0 or new_row == 7):
+            self._convert_pawn(piece)
         self._update_moves()
         self._change_turn()
+
+    def _convert_pawn(self, pawn: 'Pawn'):
+        self.pieces.remove(pawn)
+        while True:
+            print("(R)ook\nk(N)ight\n(B)ishop\n(Q)ueen")
+            conversion = input("Finish Him: ")
+            if conversion == "R":
+                if pawn.color is BLACK:
+                    self.black_rook_count += 1
+                    conversion = Rook(pawn.row, pawn.col, pawn.color, "BR" + str(self.black_rook_count))
+                else:
+                    self.white_rook_count += 1
+                    conversion = Rook(pawn.row, pawn.col, pawn.color, "WR" + str(self.white_rook_count))
+                break
+            elif conversion == "N":
+                if pawn.color is BLACK:
+                    self.black_knight_count += 1
+                    conversion = Knight(pawn.row, pawn.col, pawn.color, "BN" + str(self.black_knight_count))
+                else:
+                    self.white_knight_count += 1
+                    conversion = Knight(pawn.row, pawn.col, pawn.color, "WN" + str(self.white_knight_count))
+                break
+            elif conversion == "B":
+                if pawn.color is BLACK:
+                    self.black_bishop_count += 1
+                    conversion = Bishop(pawn.row, pawn.col, pawn.color, "BB" + str(self.black_bishop_count))
+                else:
+                    self.white_bishop_count += 1
+                    conversion = Bishop(pawn.row, pawn.col, pawn.color, "WB" + str(self.white_bishop_count))
+                break
+            elif conversion == "Q":
+                if pawn.color is BLACK:
+                    self.black_queen_count += 1
+                    conversion = Queen(pawn.row, pawn.col, pawn.color, "BQ" + str(self.black_queen_count))
+                else:
+                    self.white_queen_count += 1
+                    conversion = Queen(pawn.row, pawn.col, pawn.color, "WQ" + str(self.white_queen_count))
+                break
+            else:
+                print("And I thought you were winning...")
+                continue
+        self.pieces.add(conversion)
+        self.board[conversion.row][conversion.col] = conversion
+
+    def _complete_castle(self, row: int, new_col: int) -> None:
+        if new_col == 6:
+            self.board[row][5] = self.board[row][7]
+            self.board[row][7] = None
+            self.board[row][5].col = 5
+        else:
+            self.board[row][3] = self.board[row][0]
+            self.board[row][0] = None
+            self.board[row][3].col = 3
 
     def _update_moves(self) -> None:
         self.all_possible_moves.clear()
@@ -50,15 +113,17 @@ class GameState:
         for i in range(8):
             self.board[1][i], self.board[6][i] = Pawn(i, BLACK), Pawn(i, WHITE)
 
-        self.board[0][0], self.board[0][7] = Rook(0, BLACK), Rook(7, BLACK)
-        self.board[0][1], self.board[0][6] = Knight(1, BLACK), Knight(6, BLACK)
-        self.board[0][2], self.board[0][5] = Bishop(2, BLACK), Bishop(5, BLACK)
-        self.board[0][3], self.board[0][4] = Queen(BLACK), King(BLACK)
+        self.board[0][0], self.board[0][7] = Rook(0, 0, BLACK, "BR2"), Rook(0, 7, BLACK, "BR1")
+        self.board[0][1], self.board[0][6] = Knight(0, 1, BLACK, "BN2"), Knight(0, 6, BLACK, "BN1")
+        self.board[0][2], self.board[0][5] = Bishop(0, 2, BLACK, "BB2"), Bishop(0, 5, BLACK, "BB1")
+        self.board[0][3] = Queen(0, 3, BLACK, "BQ1")
+        self.board[0][4] = King(BLACK)
 
-        self.board[7][0], self.board[7][7] = Rook(0, WHITE), Rook(7, WHITE)
-        self.board[7][1], self.board[7][6] = Knight(1, WHITE), Knight(6, WHITE)
-        self.board[7][2], self.board[7][5] = Bishop(2, WHITE), Bishop(5, WHITE)
-        self.board[7][3], self.board[7][4] = Queen(WHITE), King(WHITE)
+        self.board[7][0], self.board[7][7] = Rook(7, 0, WHITE, "WR1"), Rook(7, 7, WHITE, "WR2")
+        self.board[7][1], self.board[7][6] = Knight(7, 1, WHITE, "WN1"), Knight(7, 6, WHITE, "WN2")
+        self.board[7][2], self.board[7][5] = Bishop(7, 2, WHITE, "WB1"), Bishop(7, 5, WHITE, "WB2")
+        self.board[7][3] = Queen(7, 3, WHITE, "WQ1")
+        self.board[7][4] = King(WHITE)
         self._update_moves()
 
 
@@ -75,11 +140,6 @@ class Piece:
 
     def __repr__(self):
         return self.name
-
-    def move(self, new_row: int, new_col: int) -> None:
-        _check_bounds(new_row, new_col)
-        if (new_row, new_col) not in self.possible_moves.keys():
-            raise InvalidPositionError()
 
     def add_move_to_possibles(self, board: [['Piece']], row: int, col: int) -> None:
         self.possible_moves[(row, col)] = board[row][col]
@@ -184,17 +244,15 @@ class Pawn(Piece):
     def __init__(self, col: int, color: int):
         if color is WHITE:
             row = 6
-            name = 'Wp{}'.format(col + 1)
+            name = 'WP{}'.format(col + 1)
         else:
             row = 1
-            name = 'Bp{}'.format(8 - col)
+            name = 'BP{}'.format(8 - col)
 
         Piece.__init__(self, row, col, color, name)
         self.en_passant = False  # Can this piece taken by en passant?
 
     def move(self, new_row: int, new_col: int) -> None:
-        Piece.move(self, new_row, new_col)
-
         if abs(new_row - self.row) == 2:
             self.en_passant = True
         else:
@@ -264,25 +322,10 @@ class Pawn(Piece):
 
 
 class Knight(Piece):
-    def __init__(self, col: int, color: int):
-        name = ''
-        if color is WHITE:
-            row = 7
-            if col == 1:
-                name = 'Wn1'
-            elif col == 6:
-                name = 'Wn2'
-        else:
-            row = 0
-            if col == 1:
-                name = 'Bn2'
-            elif col == 6:
-                name = 'Bn1'
-
+    def __init__(self, row: int, col: int, color: int, name: str):
         Piece.__init__(self, row, col, color, name)
 
     def move(self, new_row: int, new_col: int) -> None:
-        Piece.move(self, new_row, new_col)
 
         self.row = new_row
         self.col = new_col
@@ -295,40 +338,19 @@ class Knight(Piece):
                      (self.row - 2, self.col - 1), (self.row - 2, self.col + 1)}
         usables = set()
         for row, col in possibles:
-            try:
-                _check_bounds(row, col)
-                if _is_space_occupied(board, row, col) and board[row][col].color == self.color:
-                    raise InvalidPositionError()
-            except InvalidPositionError:
-                pass
-            else:
-                usables.add((row, col))
+            if _in_bounds(row, col):
+                if _is_space_empty(board, row, col) or board[row][col].color is not self.color:
+                    usables.add((row, col))
 
         for row, col in usables:
             self.add_move_to_possibles(board, row, col)
 
 
 class Bishop(Piece):
-    def __init__(self, col: int, color: int):
-        name = ''
-        if color is WHITE:
-            row = 7
-            if col == 2:
-                name = 'Wb1'
-            elif col == 5:
-                name = 'Wb2'
-        else:
-            row = 0
-            if col == 2:
-                name = 'Bb2'
-            elif col == 5:
-                name = 'Bb1'
-
+    def __init__(self, row: int, col: int, color: int, name: str):
         Piece.__init__(self, row, col, color, name)
 
     def move(self, new_row: int, new_col: int) -> None:
-        Piece.move(self, new_row, new_col)
-
         self.row = new_row
         self.col = new_col
 
@@ -346,27 +368,11 @@ class Bishop(Piece):
 
 
 class Rook(Piece):
-    def __init__(self, col: int, color: int):
-        name = ''
-        if color is WHITE:
-            row = 7
-            if col == 0:
-                name = 'Wr1'
-            elif col == 7:
-                name = 'Wr2'
-        else:
-            row = 0
-            if col == 0:
-                name = 'Br2'
-            elif col == 7:
-                name = 'Br1'
-
+    def __init__(self, row: int, col: int, color: int, name: str):
         Piece.__init__(self, row, col, color, name)
         self.can_castle = True
 
     def move(self, new_row: int, new_col: int) -> None:
-        Piece.move(self, new_row, new_col)
-
         self.row = new_row
         self.col = new_col
         self.can_castle = False
@@ -385,19 +391,10 @@ class Rook(Piece):
 
 
 class Queen(Piece):
-    def __init__(self, color: int):
-        if color is WHITE:
-            row = 7
-            name = 'WQu'
-        else:
-            row = 0
-            name = 'BQu'
-
-        Piece.__init__(self, row, 3, color, name)
+    def __init__(self, row: int, col: int, color: int, name: str):
+        Piece.__init__(self, row, col, color, name)
 
     def move(self, new_row: int, new_col: int) -> None:
-        Piece.move(self, new_row, new_col)
-
         self.row = new_row
         self.col = new_col
 
@@ -427,17 +424,15 @@ class King(Piece):
     def __init__(self, color: int):
         if color is WHITE:
             row = 7
-            name = 'WKi'
+            name = 'WKG'
         else:
             row = 0
-            name = 'BKi'
+            name = 'BKG'
 
         Piece.__init__(self, row, 4, color, name)
         self.can_castle = True
 
     def move(self, new_row: int, new_col: int) -> None:
-        Piece.move(self, new_row, new_col)
-
         self.row = new_row
         self.col = new_col
         self.can_castle = False
@@ -450,22 +445,29 @@ class King(Piece):
                      (self.row - 1, self.col), (self.row + 1, self.col)}
         usables = set()
         for row, col in possibles:
-            try:
-                _check_bounds(row, col)
-                if _is_space_occupied(board, row, col) and board[row][col].color == self.color:
-                    raise InvalidPositionError()
-            except InvalidPositionError:
-                pass
-            else:
-                usables.add((row, col))
+            if _in_bounds(row, col):
+                if _is_space_empty(board, row, col) or board[row][col].color is not self.color:
+                    usables.add((row, col))
 
         for row, col in usables:
             self.add_move_to_possibles(board, row, col)
 
+        if self.can_castle:
+            self._explore_castles(board)
 
-def _check_bounds(row: int, col: int) -> None:
-    if row not in range(8) or col not in range(8):
-        raise InvalidPositionError()
+    def _explore_castles(self, board: [['Piece']]) -> None:
+        if isinstance(board[self.row][7], Rook) and board[self.row][7].can_castle:
+            if _is_space_empty(board, self.row, 5) and _is_space_empty(board, self.row, 6):
+                self.add_move_to_possibles(board, self.row, 6)
+
+        if isinstance(board[self.row][0], Rook) and board[self.row][0].can_castle:
+            if _is_space_empty(board, self.row, 1) and _is_space_empty(board, self.row, 2) \
+                    and _is_space_empty(board, self.row, 3):
+                self.add_move_to_possibles(board, self.row, 2)
+
+
+def _in_bounds(row: int, col: int) -> bool:
+    return row in range(8) and col in range(8)
 
 
 def _is_space_occupied(board: [[Piece]], row: int, col: int) -> bool:
