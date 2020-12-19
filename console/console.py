@@ -3,9 +3,16 @@
 # Console/Main
 
 import game_logic
+import random
 
 
 def _run() -> None:
+    """
+    Runs the chess game
+    Handles executing moves and printing GameState info to the console
+    Handles victories or stalemates
+    :return: None
+    """
     game_state = game_logic.GameState()
     while True:
         _print_board(game_state)
@@ -29,8 +36,13 @@ def _run() -> None:
 
 
 def _print_board(state: game_logic.GameState) -> None:
+    """
+    Prints the board to the console using standard chess notation
+    :param state: GameState
+    :return: None
+    """
     text = ''
-    count = 0
+    count = 8
     for i in state.board:
         text += str(count) + '\t'
         for x in i:
@@ -39,12 +51,17 @@ def _print_board(state: game_logic.GameState) -> None:
             else:
                 text += "...  "
         text = text.rstrip() + "\n"
-        count += 1
-    text += " \t 0    1    2    3    4    5    6    7"
+        count -= 1
+    text += " \t a    b    c    d    e    f    g    h"
     print(text)
 
 
 def _is_endgame(state: game_logic.GameState) -> bool:
+    """
+    Prints check, checkmate, and stalemate info to the console if applicable
+    :param state: GameState
+    :return: True if game is over (checkmate or stalemate). False if not
+    """
     if state.mate:
         if state.check is game_logic.WHITE:
             print("BLACK is the victor")
@@ -52,11 +69,18 @@ def _is_endgame(state: game_logic.GameState) -> bool:
             print("WHITE is the victor")
         return True
     elif state.check != 0:
-        print("CZECH!!!!!!!!!!")
+        checks = ["CZECH", "CHUBBY CHECKER", "CHECK PLEASE"]
+        print(checks[random.randint(0, 2)])
+        return False
+    elif state.stalemate:
+        print("Such a stale finish...")
+        return True
+    else:
         return False
 
 
 def _print_turn(state: game_logic.GameState) -> None:
+    """Print whose turn it is"""
     print("Turn: ", end='')
     if state.turn is game_logic.WHITE:
         print("W")
@@ -65,6 +89,12 @@ def _print_turn(state: game_logic.GameState) -> None:
 
 
 def _retrieve_move_input(state: game_logic.GameState) -> (game_logic.Piece, int, int):
+    """
+    Receives input from the user(s) on which to move execute
+    Lists the possible moves the user can make with their selected piece
+    :param state: GameState
+    :return: (Piece the user wants to move, desired row to move to, desired column to move to)
+    """
     user_input = input("Piece Name? ")
     if state.turn == game_logic.WHITE:
         user_input = 'W' + user_input.upper()
@@ -87,15 +117,37 @@ def _retrieve_move_input(state: game_logic.GameState) -> (game_logic.Piece, int,
 
 
 def _print_moves(moves: [(int, int)]) -> None:
+    """
+    Prints out the list of moves that the selected piece can make
+    :param moves: List of (row, column) coordinates that represent moves
+    :return: None
+    """
     print("Possible moves: ")
     count = 1
     for move in moves:
-        print(str(count) + ": " + str(move))
+        print(str(count) + ": " + _convert_move_format(move))
         count += 1
     print("0: Back->")
 
 
+def _convert_move_format(move: (int, int)) -> str:
+    """
+    Converts move from (row, column) to typical chess format (e.g. a4, h3)
+    :param move: (row: int, column: int)
+    :return: str in chess format
+    """
+    cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    return str(cols[move[1]]) + str(8 - move[0])
+
+
 def _user_select_move(piece: game_logic.Piece, moves: [(int, int)]) -> (game_logic.Piece, int, int):
+    """
+    Asks the user to select a certain move from the already printed list of possible moves for their selected piece
+    Returns the final 3-tuple to _retrieve_move_input() so the GameState can execute the move
+    :param piece: User's piece they chose to move
+    :param moves: List of move coordinates that the piece can go to
+    :return: (Piece to move, desired row, desired column)
+    """
     while True:
         try:
             move = int(input("Enter move number: "))
