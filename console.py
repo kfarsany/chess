@@ -9,13 +9,9 @@ def _run() -> None:
     game_state = game_logic.GameState()
     while True:
         _print_board(game_state)
-        if game_state.check:
-            print("CZECH!!!!!!!!!!")
+        if _is_endgame(game_state):
+            break
         _print_turn(game_state)
-        #####################################################
-        for kv in game_state.all_possible_moves.items():
-            print(kv)
-        #####################################################
         try:
             user_move = _retrieve_move_input(game_state)
         except NameError:
@@ -46,6 +42,18 @@ def _print_board(state: game_logic.GameState) -> None:
         count += 1
     text += " \t 0    1    2    3    4    5    6    7"
     print(text)
+
+
+def _is_endgame(state: game_logic.GameState) -> bool:
+    if state.mate:
+        if state.check is game_logic.WHITE:
+            print("BLACK is the victor")
+        else:
+            print("WHITE is the victor")
+        return True
+    elif state.check != 0:
+        print("CZECH!!!!!!!!!!")
+        return False
 
 
 def _print_turn(state: game_logic.GameState) -> None:

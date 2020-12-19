@@ -12,7 +12,7 @@ class GameState:
     def __init__(self):
         self.turn = WHITE
         self.check = 0  # This color is under check. check = 0 means there is no check
-        self.mate = 0  # Same rules for check apply to mate
+        self.mate = False  # True if checkmate, False if not
         self.board = [[]]  # 2-D array of Pieces or None
         self.pieces = set()  # set of Pieces
         #############################################
@@ -108,27 +108,33 @@ class GameState:
                     self.pieces.add(square)
                     square.calculate_possible_moves(self.board)
                     self.all_possible_moves[square] = square.possible_moves
-    #     if self.lookahead:
-    #         self._lookahead_for_check()
-    #
-    # def _lookahead_for_check(self) -> None:
-    #     moves_copy = copy.deepcopy(self.all_possible_moves)
-    #     for piece, moves in moves_copy.items():
-    #         for row, col in moves.keys():
-    #             next_state = copy.copy(self)
-    #             next_state.lookahead = False
-    #             next_state.execute_move((piece, row, col))
-    #             if next_state.check == self.turn:
-    #                 self.all_possible_moves[piece].pop((row, col))
+        if self.lookahead:
+            self._lookahead_for_check()
+
+    def _lookahead_for_check(self) -> None:
+        moves_copy = copy.deepcopy(self.all_possible_moves)
+        for piece, moves in moves_copy.items():
+            for row, col in moves.keys():
+                next_state = copy.deepcopy(self)
+                next_state.lookahead = False
+                next_state.execute_move((_get_equivalent_piece(piece, next_state), row, col))
+                if next_state.check == -self.turn:
+                    self.all_possible_moves[_get_equivalent_piece(piece, self)].pop((row, col))
 
     def _check_for_check(self) -> None:
         for move_dict in self.all_possible_moves.values():
             for capture in move_dict.values():
                 if isinstance(capture, King):
                     self.check = capture.color
+                    self._check_for_mate()
                     return
-        else:
-            self.check = 0
+        self.check = 0
+
+    def _check_for_mate(self) -> None:
+        for piece in self.pieces:
+            if piece.color is self.check and len(piece.possible_moves) != 0:
+                break
+        self.mate = True
 
     def _change_turn(self) -> None:
         self.turn = -self.turn
@@ -499,3 +505,9 @@ def _is_space_occupied(board: [[Piece]], row: int, col: int) -> bool:
 
 def _is_space_empty(board: [[Piece]], row: int, col: int) -> bool:
     return not _is_space_occupied(board, row, col)
+
+
+def _get_equivalent_piece(piece: Piece, game_state: GameState) -> Piece:
+    for bizarro_piece in game_state.pieces:
+        if piece.name == bizarro_piece.name:
+            return bizarro_piece
