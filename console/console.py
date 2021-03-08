@@ -2,13 +2,88 @@
 # Chess
 # Console/Main
 
-import game_logic
 import random
+import game_logic
+from ai import AI
 
 
 def _run() -> None:
     """
-    Runs the chess game
+    Large overhead run function that is essentially the same as __main__
+    :return: None
+    """
+    is_ai_present, ai_color = _ai_setup()
+    if not is_ai_present:
+        _run_without_ai()
+    else:
+        if ai_color is None:
+            _run_with_two_ais()
+        else:
+            _run_with_one_ai(ai_color)
+
+
+def _run_with_one_ai(ai_color: int) -> None:
+    """
+    Runs the chess game for human vs. AI
+    Handles executing moves and printing GameState info to the console
+    Handles victories or stalemates
+    :return: None
+    """
+    game_state = game_logic.GameState()
+    ai = AI()
+    while True:
+        _print_board(game_state)
+        if _is_endgame(game_state):
+            break
+        _print_turn(game_state)
+
+        if game_state.turn is ai_color:
+            move = ai.make_move(game_state)
+        else:
+            try:
+                move = _retrieve_move_input(game_state)
+            except NameError:
+                print("I know not what that piece is...\n")
+                continue
+            except IndexError:
+                print("I'm afraid that piece cannot move...\n")
+                continue
+            except ArithmeticError:
+                print("It's ok, we all make mistakes...\n")
+                continue
+
+        game_state.execute_move(move)
+        print()
+
+
+def _run_with_two_ais() -> None:
+    """
+    Runs the chess game for obersvation of two AIs
+    Handles executing moves and printing GameState info to the console
+    Handles victories or stalemates
+    :return: None
+    """
+    game_state = game_logic.GameState()
+    ai_white = AI()
+    ai_black = AI()
+    while True:
+        _print_board(game_state)
+        if _is_endgame(game_state):
+            break
+        _print_turn(game_state)
+
+        if game_state.turn is game_logic.WHITE:
+            move = ai_white.make_move(game_state)
+        else:
+            move = ai_black.make_move(game_state)
+
+        game_state.execute_move(move)
+        print()
+
+
+def _run_without_ai() -> None:
+    """
+    Runs the chess game for two human players
     Handles executing moves and printing GameState info to the console
     Handles victories or stalemates
     :return: None
@@ -19,8 +94,9 @@ def _run() -> None:
         if _is_endgame(game_state):
             break
         _print_turn(game_state)
+
         try:
-            user_move = _retrieve_move_input(game_state)
+            move = _retrieve_move_input(game_state)
         except NameError:
             print("I know not what that piece is...\n")
             continue
@@ -31,8 +107,68 @@ def _run() -> None:
             print("It's ok, we all make mistakes...\n")
             continue
 
-        game_state.execute_move(user_move)
+        game_state.execute_move(move)
         print()
+
+
+def _ai_setup() -> (bool, "int or None"):
+    """
+    Retrieves AI preferences from user.
+    If ai_color is None, either there will be two humans or two AIs.
+    If ai_color is not None, the user will play an AI, and the user will have specified a preferred color.
+    :return: (will AI be used?, ai_color)
+    """
+    ai_choice = _get_user_ai_choice()
+    ai_color = None
+    if ai_choice:
+        ai_color = _get_user_ai_prefs()
+    return ai_choice, ai_color
+
+
+def _get_user_ai_choice() -> bool:
+    """
+    Returns true if user wants to utilize AI
+    :return: bool
+    """
+    while True:
+        ai_choice = input("Use AI? (y/n): ").lower()
+        if ai_choice == 'y':
+            return True
+        elif ai_choice == 'n':
+            return False
+        else:
+            print("Pardon me? Try again, old chap!")
+
+
+def _get_user_ai_prefs() -> "int or None":
+    """
+    Returns the color of the AI if there will be only one AI.
+    If the user wishes to observe two AI play each other, return None.
+    :return: int or None
+    """
+    while True:
+        play_input = input("\nWould you like to (p)lay or (o)bserve?: ").lower()
+        if play_input == 'p':
+            return - _get_color_input()
+        elif play_input == 'o':
+            return None
+        else:
+            print("Speak the King's English, old bean!")
+
+
+def _get_color_input() -> int:
+    """
+    Helper to get the user's color choice
+    :return: int
+    """
+    while True:
+        color_input = input("\nDo you want (b)lack or (w)hite?: ").lower()
+        if color_input == 'b':
+            return game_logic.BLACK
+        elif color_input == 'w':
+            return game_logic.WHITE
+        else:
+            print("Buck up, young one; you'll get it eventually!")
 
 
 def _print_board(state: game_logic.GameState) -> None:
