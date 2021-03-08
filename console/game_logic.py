@@ -60,6 +60,13 @@ class GameState:
         self._check_for_stalemate()
         self._change_turn()
 
+    def undo(self) -> None:
+        """
+        Moves the GameState backwards in time by one move.
+        :return: None
+        """
+        pass
+
     def _convert_pawn(self, pawn: 'Pawn') -> None:
         """
         Converts a pawn at the end of the board to a Queen
